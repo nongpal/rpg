@@ -9,15 +9,11 @@ Player InitPlayer(void) {
     player.graphics.action      = ACTION_IDLE;
     player.graphics.direction   = DIRECTION_FRONT;
     player.graphics.frameSize   = (Vector2){ 64.0f, 64.0f };
-    player.graphics.headTexture = LoadTexture("../assets/characters/ivy/ivy_head_good.png");
-    player.graphics.bodyTexture = LoadTexture("../assets/characters/ivy/ivy_body_base.png");
+    player.graphics.headTexture = LoadTextureFromBin("../assets/characters/ivy/ivy_head_good.bin");
+    player.graphics.bodyTexture = LoadTextureFromBin("../assets/characters/ivy/ivy_body_base.bin");
     
     player.equipment.equippedFlags = 0;
-    player.equipment.equippedTextures[SLOT_HAIR]        = LoadTexture("../assets/characters/ivy/ivy_hair_basic.png");
-    player.equipment.equippedTextures[SLOT_TOP]         = LoadTexture("../assets/characters/ivy/ivy_shirt_basic.png");
-    player.equipment.equippedTextures[SLOT_BOTTOM]      = LoadTexture("../assets/characters/ivy/ivy_bottom_basic.png");
-    player.equipment.equippedTextures[SLOT_HAND_MAIN]   = LoadTexture("../assets/weapons/broad_sword.png");
-    
+
     player.animation.currentFrame   = 0;
     player.animation.frameTimer     = 0.0f;
     player.animation.frameDirection = 1;
@@ -57,7 +53,7 @@ int GetSpriteRow(const Player *player) {
     }
 }
 
-static void StartMoving(Player *player, Vector2 inputDir, Direction nextDir, bool isShiftDown) {
+static void StartMoving(Player *player, const Vector2 inputDir, const Direction nextDir, const bool isShiftDown) {
     player->graphics.direction = nextDir;
     player->movement.moveDuration = isShiftDown ? 0.25f : 0.42f;
     player->graphics.action = isShiftDown ? ACTION_RUN : ACTION_WALK;
@@ -135,22 +131,24 @@ static bool GetMovementInput(Vector2 *dir, Direction *outDir) {
     return false;
 }
 
-static bool IsTileSolid(const Vector2 tilePos, const Collusion *collusion)
+static bool IsTileSolid(const Vector2 tilePos, const Collusion *collusion, const int count)
 {
     const Vector2 worldPos = {
-        tilePos.x * TILE_SIZE + (TILE_SIZE / 2.0f),
-        tilePos.y * TILE_SIZE + (TILE_SIZE / 2.0f)
+        tilePos.x * TILE_SIZE + TILE_SIZE / 2.0f,
+        tilePos.y * TILE_SIZE + TILE_SIZE / 2.0f
     };
 
-    for (int i = 0; i < collusion->rectCount; i++) {
-        if (CheckCollisionPointRec(worldPos, collusion->rect[i])) {
-            return true;
+    for (int c = 0; c < count; c++) {
+        for (int i = 0; i < collusion[c].rectCount; i++) {
+            if (CheckCollisionPointRec(worldPos, collusion[c].rect[i])) {
+                return true;
+            }
         }
     }
     return false;
 }
 
-void UpdatePlayer(Player *player, const float frameTime, const Collusion *collusion) {
+void UpdatePlayer(Player *player, const float frameTime, const Collusion *collusion, const int count) {
     Vector2     inputDir    = {0};
     Direction   nextDir     = player->graphics.direction;
     const bool  hasInput    = GetMovementInput(&inputDir, &nextDir);
@@ -166,7 +164,7 @@ void UpdatePlayer(Player *player, const float frameTime, const Collusion *collus
             player->graphics.action     = ACTION_IDLE;
         }
         else {
-            const bool dirChanged = (player->graphics.direction != nextDir);
+            const bool dirChanged = player->graphics.direction != nextDir;
 
             if (dirChanged && DirectionKeyPressed(nextDir)) {
                 player->graphics.direction  = nextDir;
@@ -184,7 +182,7 @@ void UpdatePlayer(Player *player, const float frameTime, const Collusion *collus
                         player->movement.tilePosition.y + inputDir.y
                     };
 
-                    if (!IsTileSolid(targetPos, collusion)) {
+                    if (!IsTileSolid(targetPos, collusion, count)) {
                         player->movement.holdTimer  = 0.0f;
                         player->movement.justTurned = false;
                         StartMoving(player, inputDir, nextDir, isShift);
@@ -215,7 +213,7 @@ void UpdatePlayer(Player *player, const float frameTime, const Collusion *collus
                     player->movement.tilePosition.y + freshInputDir.y
                 };
 
-                if (!IsTileSolid(nextTarget, collusion))
+                if (!IsTileSolid(nextTarget, collusion, count))
                 {
                     player->movement.targetTilePosition = nextTarget;
                     player->movement.moveTimer      -= player->movement.moveDuration;
@@ -259,7 +257,8 @@ void UpdatePlayer(Player *player, const float frameTime, const Collusion *collus
     UpdateAnimation(player, frameTime);
 }
 
-void DrawPlayer(const Player *player) {
+void DrawPlayer(const Player *player)
+{
     const int spriteRow = GetSpriteRow(player);
 
     const Rectangle sourceRect = {
@@ -270,18 +269,20 @@ void DrawPlayer(const Player *player) {
     };
 
     const Rectangle destRec = {
-        .x      = player->movement.position.x - (player->graphics.frameSize.x / 4.0f),
-        .y      = player->movement.position.y - (player->graphics.frameSize.y / 2.0f),
+        .x      = player->movement.position.x - player->graphics.frameSize.x / 4.0f,
+        .y      = player->movement.position.y - player->graphics.frameSize.y / 2.0f,
         .width  = player->graphics.frameSize.x,
         .height = player->graphics.frameSize.y
     };
 
-    DrawTexturePro(player->graphics.bodyTexture, sourceRect, destRec, (Vector2){0}, 0.0f, WHITE);
-    DrawTexturePro(player->graphics.headTexture, sourceRect, destRec, (Vector2){0}, 0.0f, WHITE);
+    const Vector2 position = {0};
+
+    DrawTexturePro(player->graphics.bodyTexture, sourceRect, destRec, position, 0.0f, WHITE);
+    DrawTexturePro(player->graphics.headTexture, sourceRect, destRec, position, 0.0f, WHITE);
 
     for (int i = 0; i < MAX_SLOTS; i++) {
         if (PlayerIsEquipItem(player, i)) {
-            DrawTexturePro(player->equipment.equippedTextures[i], sourceRect, destRec, (Vector2){0}, 0.0f, WHITE);
+            DrawTexturePro(player->equipment.equippedTextures[i], sourceRect, destRec, position, 0.0f, WHITE);
         }
     }
 }
@@ -289,7 +290,7 @@ void DrawPlayer(const Player *player) {
 void PlayerEquipItem(Player *p, const Item newItem) {
     if (newItem.slot < MAX_SLOTS) {
         p->equipment.equippedTextures[newItem.slot] = newItem.texture;
-        p->equipment.equippedFlags |= (1 << newItem.slot);
+        p->equipment.equippedFlags |= 1 << newItem.slot;
     }
 }
 
