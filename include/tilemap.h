@@ -1,109 +1,59 @@
 #ifndef TILEMAP_H
 #define TILEMAP_H
 
-#include <stdint.h>
-
 #include "raylib.h"
-
-#define TILE_SIZE   32
-#define SUB_TILE    16
+#include <stdbool.h>
 
 typedef enum {
-    LAYER_GROUND = 0,
-    LAYER_COLLUSION
-} LayerType;
+    TILE_NONE = 0,
+    TILE_GROUND,
+    TILE_WALL,
+    TILE_BORDER,
+    TILE_COLLUSION
+} TileType;
 
-typedef enum {
-    CORNER_TOP_LEFT = 0,
-    CORNER_TOP_RIGHT,
-    CORNER_BOTTOM_RIGHT,
-    CORNER_BOTTOM_LEFT,
-    CORNER_MAX_SIZE
-} CornerSide;
-
-typedef enum {
-    EDGE_TOP = 0,
-    EDGE_RIGHT,
-    EDGE_BOTTOM,
-    EDGE_LEFT,
-    EDGE_MAX_SIZE
-} EdgeSide;
-
-typedef enum {
-    NEIGHBOR_N  = 1 << 0,   // 1
-    NEIGHBOR_S  = 1 << 1,   // 2
-    NEIGHBOR_E  = 1 << 2,   // 4
-    NEIGHBOR_W  = 1 << 3,   // 8
-    NEIGHBOR_NW = 1 << 4,   // 16
-    NEIGHBOR_NE = 1 << 5,   // 32
-    NEIGHBOR_SW = 1 << 6,   // 64
-    NEIGHBOR_SE = 1 << 7    // 128
-} TileNeighbor;
-
-typedef enum {
-    AUTOTILE_GROUND,
-    AUTOTILE_WALL
-} AutoTileType;
+typedef struct {
+    int id;
+    TileType type;
+} TileProperties;
 
 typedef struct {
     Texture2D texture;
-    Vector2 position;
-    AutoTileType type;
-    union {
-        struct {
-            Rectangle cornersIn[CORNER_MAX_SIZE];
-            Rectangle cornersOut[CORNER_MAX_SIZE];
-            Rectangle edges[EDGE_MAX_SIZE];
-        } ground;
-
-        struct {
-            Rectangle edges[EDGE_MAX_SIZE];
-        } wall;
-    };
-} AutoTile;
-
-typedef struct {
-    Texture2D texture;
+    char *texturePath;
     int firstGid;
-    char *source;
+    TileProperties *properties;
+    int propertyCount;
 } Tileset;
 
 typedef struct {
-    char *name;
-    uint32_t *data;
-    uint32_t width;
-    uint32_t height;
-    float offsetX;
-    float offsetY;
-    bool visible;
+    unsigned int *data;
+    int width;
+    int height;
 } TileLayer;
 
 typedef struct {
-    Rectangle *bounds;
-    unsigned count;
-} CollusionData;
+    // Map dimensions
+    int width;
+    int height;
+    int tileWidth;
+    int tileHeight;
 
-typedef struct {
-    int width, height;
-    int tileWidth, tileHeight;
-
+    // Tileset data
     Tileset *tilesets;
     int tilesetCount;
 
+    // Layer data
     TileLayer *layers;
     int layerCount;
-
-    CollusionData collusion;
-    AutoTile *autoTile;
 } Tilemap;
 
 
-Tilemap LoadTilemap(const char *jsonPath);
-void    UnloadTilemap(const Tilemap *tilemap);
-bool    LoadAutoTile(Tilemap *tilemap, const char *texturePath, Vector2 position);
-void    DrawAutoTile(const Tilemap *tilemap);
+Tilemap LoadTilemapBinary(const char *jsonPath);
+void UnloadTilemap(Tilemap *tilemap);
 
-RenderTexture2D GenerateTilemapRenderTexture(const Tilemap *tilemap);
+void DrawTilemap(const Tilemap *tilemap);
 
+bool IsTileWalkable(const Tilemap *tilemap, int x, int y);
+TileType GetTileType(const Tilemap *tilemap, int layerIndex, int x, int y);
 
 #endif

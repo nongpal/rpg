@@ -14,10 +14,10 @@ typedef enum {
 } Direction;
 
 typedef enum {
+    SLOT_BOTTOM,
     SLOT_TOP,
     SLOT_MASK,
     SLOT_HAIR,
-    SLOT_BOTTOM,
     SLOT_FEET,
     SLOT_HAND_MAIN,
     SLOT_HAND_OFF,
@@ -40,5 +40,8 @@ typedef struct {
 
 Item LoadItem(const char *filename, EquipSlot slot, const char *label);
 void UnloadItem(Item item);
+
+Texture2D LoadTextureFromBin(const char *fileName);
+
 
 #endif

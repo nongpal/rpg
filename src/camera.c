@@ -12,6 +12,7 @@ GameCamera InitGameCamera(const int screenWidth, const int screenHeight)
     
     camera.followSpeed      = 5.0f;
     camera.zoom             = 2.0f;
+    camera.zoomTarget       = 2.0f;
     camera.offset           = (Vector2){ (float)screenWidth / 2.0f, (float)screenHeight / 2.0f };
     camera.smoothFollow     = true;
     camera.boundsMin        = (Vector2){ 0.0f, 0.0f };
@@ -20,15 +21,24 @@ GameCamera InitGameCamera(const int screenWidth, const int screenHeight)
     return camera;
 }
 
-void UpdateCamera2D(GameCamera *camera, const Player *player, const Tilemap *map)
+void UpdateCamera2D(GameCamera *camera, const Player *player, const Tilemap *map, const float frameTime)
 {
     if (!camera || !player || !map) return;
+
+    const float wheel = GetMouseWheelMove();
+    if (wheel != 0) {
+        camera->zoomTarget += wheel * 0.25f;
+        camera->zoomTarget = Clamp(camera->zoomTarget, 0.5f, 3.0f);
+    }
+
+    const float zoomLerpFactor = 1.0f - expf(-8.0f * frameTime);
+    camera->zoom = Lerp(camera->zoom, camera->zoomTarget, zoomLerpFactor);
 
     camera->camera.zoom = camera->zoom;
 
     const Vector2 targetPos = {
-        player->movement.position.x + SUB_TILE,
-        player->movement.position.y + SUB_TILE
+        player->movement.position.x + 16,
+        player->movement.position.y + 16
     };
 
     if (camera->smoothFollow) {
@@ -40,8 +50,8 @@ void UpdateCamera2D(GameCamera *camera, const Player *player, const Tilemap *map
     }
 
     const Vector2 viewHalfSize = {
-        ((float)GetScreenWidth() / camera->camera.zoom) * 0.5f,
-        ((float)GetScreenHeight() / camera->camera.zoom) * 0.5f
+        (float)GetScreenWidth() / camera->camera.zoom * 0.5f,
+        (float)GetScreenHeight() / camera->camera.zoom * 0.5f
     };
 
     const float mapW = (float)(map->width * map->tileWidth);
