@@ -4,7 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-Item LoadItem(const char *filename, const EquipSlot slot, const char *label) {
+Item LoadItem(const char *filename, const EquipSlot slot, const char *label)
+{
     Item item = {0};
     item.texture = LoadTextureFromBin(filename);
     item.slot = slot;
@@ -17,28 +18,26 @@ void UnloadItem(const Item item) {
     UnloadTexture(item.texture);
 }
 
-Texture2D LoadTextureFromBin(const char *fileName) {
+Texture2D LoadTextureFromBin(const char *fileName)
+{
     FILE *file = fopen(fileName, "rb");
     if (!file) {
-        TraceLog(LOG_ERROR, "Gagal buka file binary: %s", fileName);
+        TraceLog(LOG_ERROR, "Failed to open binary file: %s", fileName);
         return (Texture2D){ 0 };
     }
 
-    unsigned int size = 0;
-    // Baca 4 byte pertama (size)
+    int size = 0;
     if (fread(&size, sizeof(unsigned int), 1, file) != 1) {
         fclose(file);
         return (Texture2D){ 0 };
     }
 
-    // Alokasi memori sesuai size
-    unsigned char *data = (unsigned char *)malloc(size);
+    unsigned char *data = malloc(size);
     fread(data, 1, size, file);
     fclose(file);
 
-    // Raylib proses datanya
-    Image img = LoadImageFromMemory(".png", data, size);
-    Texture2D tex = LoadTextureFromImage(img);
+    const Image img = LoadImageFromMemory(".png", data, size);
+    const Texture2D tex = LoadTextureFromImage(img);
 
     UnloadImage(img);
     free(data);
