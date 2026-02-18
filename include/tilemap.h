@@ -1,15 +1,17 @@
 #ifndef TILEMAP_H
 #define TILEMAP_H
 
-#include "raylib.h"
 #include <stdbool.h>
+#include "raylib.h"
 
 typedef enum {
-    TILE_NONE = 0,
-    TILE_GROUND,
-    TILE_WALL,
-    TILE_BORDER,
-    TILE_COLLUSION
+    TILE_NONE = 0,  // 0
+    TILE_GROUND,    // 1
+    TILE_WALL,      // 2
+    TILE_BORDER,    // 3
+    TILE_COLLUSION, // 4
+    TILE_CARPET,    // 5
+    TILE_TABLE      // 6
 } TileType;
 
 typedef struct {

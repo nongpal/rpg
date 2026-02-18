@@ -8,6 +8,7 @@ int main(void)
     const int screenWidth   = 800;
     const int screenHeight  = 600;
 
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT | FLAG_MSAA_4X_HINT);
     InitWindow(screenWidth, screenHeight, "RPG Game");
 
     Item hair       = LoadItem("../assets/characters/ivy/ivy_hair_basic.bin", SLOT_HAIR, "hair");

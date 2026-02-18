@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -15,7 +14,7 @@ static void
 read_exact(FILE *f, void *dst, const size_t n, const char *label)
 {
     if (fread(dst, 1, n, f) != n) {
-        fprintf(stderr, "[tilemap] Failed to read file: %s\n", label);
+        TraceLog(LOG_ERROR, "[Tilemap] Failed to read file: %s", label);
         exit(1);
     }
 }
@@ -26,7 +25,7 @@ static char *read_string(FILE *f)
     read_exact(f, &len, sizeof(int), "string length");
 
     char *buf = malloc(len + 1);
-    if (!buf) { fprintf(stderr, "[tilemap] OOM\n"); exit(1); }
+    if (!buf) { TraceLog(LOG_ERROR, "[Tilemap] Out of memory"); exit(1); }
 
     read_exact(f, buf, len, "string data");
     buf[len] = '\0';
@@ -62,7 +61,7 @@ Tilemap LoadTilemapBinary(const char *jsonPath)
 
     FILE *f = fopen(jsonPath, "rb");
     if (!f) {
-        fprintf(stderr, "[tilemap] Failed to read file: %s\n", jsonPath);
+        TraceLog(LOG_ERROR, "[Tilemap] Failed to open file: %s", jsonPath);
         exit(1);
     }
 
@@ -75,7 +74,7 @@ Tilemap LoadTilemapBinary(const char *jsonPath)
     read_exact(f, &tilemap.layerCount,  sizeof(int), "layerCount");
 
     tilemap.tilesets = (Tileset *)calloc(tilemap.tilesetCount, sizeof(Tileset));
-    if (!tilemap.tilesets) { fprintf(stderr, "[ERROR] Tilemap OOM tilesets\n"); exit(1); }
+    if (!tilemap.tilesets) { TraceLog(LOG_ERROR, "[Tilemap] Out of memory for tilesets"); exit(1); }
 
     char pathBuffer[SHORT_STRING] = {0};
 
@@ -88,7 +87,7 @@ Tilemap LoadTilemapBinary(const char *jsonPath)
         ts->texturePath = read_string(f);
 
         ts->properties = (TileProperties *)malloc(ts->propertyCount * sizeof(TileProperties));
-        if (!ts->properties) { fprintf(stderr, "[ERROR] Tilemap OOM props\n"); exit(1); }
+        if (!ts->properties) { TraceLog(LOG_ERROR, "[Tilemap] Out of memory for tile properties"); exit(1); }
 
         for (int j = 0; j < ts->propertyCount; j++) {
             read_exact(f, &ts->properties[j].id,   sizeof(int), "prop.id");
@@ -101,7 +100,7 @@ Tilemap LoadTilemapBinary(const char *jsonPath)
 
     // ── LAYERS ───────────────────────────────────────────────────────────────
     tilemap.layers = (TileLayer *)calloc(tilemap.layerCount, sizeof(TileLayer));
-    if (!tilemap.layers) { fprintf(stderr, "[ERROR] Tilemap OOM layers\n"); exit(1); }
+    if (!tilemap.layers) { TraceLog(LOG_ERROR, "[Tilemap] Out of memory for layers"); exit(1); }
 
     for (int i = 0; i < tilemap.layerCount; i++)
     {
@@ -112,7 +111,7 @@ Tilemap LoadTilemapBinary(const char *jsonPath)
 
         const int cell_count = layer->width * layer->height;
         layer->data = (unsigned int *)malloc(cell_count * sizeof(unsigned int));
-        if (!layer->data) { fprintf(stderr, "[tilemap] OOM layer.data\n"); exit(1); }
+        if (!layer->data) { TraceLog(LOG_ERROR, "[Tilemap] Out of memory for layer data"); exit(1); }
 
         read_exact(f, layer->data, cell_count * sizeof(unsigned int), "layer.data");
     }
@@ -229,6 +228,52 @@ DrawWallTile(const Tilemap *tilemap, const Tileset *tileset,
 }
 
 static void
+DrawDecorationTile(const Tilemap *tilemap, const Tileset *tileset,
+             const Rectangle src, const Vector2 pos,
+             const int x, const int y)
+{
+    const TileType typeN = GetTileType(tilemap, 1, x, y - 1);
+    const TileType typeS = GetTileType(tilemap, 1, x, y + 1);
+    const TileType typeE = GetTileType(tilemap, 1, x + 1, y);
+    const TileType typeW = GetTileType(tilemap, 1, x - 1, y);
+
+    const float sX = src.x;
+    const float sY = src.y;
+    const float pX = pos.x;
+    const float pY = pos.y;
+
+    // Center fill
+    if (typeE == TILE_CARPET || typeE == TILE_TABLE)
+        DrawTilePart(&tileset->texture, sX + TILE_HALF, sY + TILE_SIZE + TILE_HALF, TILE_SIZE, TILE_SIZE, pX, pY);
+
+    // Edges
+    if (typeE != TILE_CARPET && typeE != TILE_TABLE)
+        DrawTilePart(&tileset->texture, sX + TILE_SIZE, sY + TILE_SIZE + TILE_HALF, TILE_SIZE, TILE_SIZE, pX, pY);
+
+    if (typeW != TILE_CARPET && typeW != TILE_TABLE)
+        DrawTilePart(&tileset->texture, sX, sY + TILE_SIZE + TILE_HALF, TILE_SIZE, TILE_SIZE, pX, pY);
+
+    if (typeN != TILE_CARPET && typeN != TILE_TABLE)
+        DrawTilePart(&tileset->texture, sX + TILE_HALF, sY + TILE_SIZE, TILE_SIZE, TILE_HALF, pX, pY);
+
+    if (typeS != TILE_CARPET && typeS != TILE_TABLE)
+        DrawTilePart(&tileset->texture, sX + TILE_HALF, sY + TILE_SIZE * 2 + TILE_HALF, TILE_SIZE, TILE_HALF, pX, pY + TILE_HALF);
+
+    // Corners
+    if (typeN != TILE_CARPET && typeE != TILE_CARPET && typeN != TILE_TABLE && typeE != TILE_TABLE)
+        DrawTilePart(&tileset->texture, sX + TILE_SIZE + TILE_HALF, sY + TILE_SIZE, TILE_HALF, TILE_HALF, pX + TILE_HALF, pY);
+
+    if (typeN != TILE_CARPET && typeW != TILE_CARPET && typeN != TILE_TABLE && typeW != TILE_TABLE)
+        DrawTilePart(&tileset->texture, sX, sY + TILE_SIZE, TILE_HALF, TILE_HALF, pX, pY);
+
+    if (typeS != TILE_CARPET && typeE != TILE_CARPET && typeS != TILE_TABLE && typeE != TILE_TABLE)
+        DrawTilePart(&tileset->texture, sX + TILE_SIZE + TILE_HALF, sY + 2 * TILE_SIZE + TILE_HALF, TILE_HALF, TILE_HALF, pX + TILE_HALF, pY + TILE_HALF);
+
+    if (typeS != TILE_CARPET && typeW != TILE_CARPET && typeS != TILE_TABLE && typeW != TILE_TABLE)
+        DrawTilePart(&tileset->texture, sX, sY + 2 * TILE_SIZE + TILE_HALF, TILE_HALF, TILE_HALF, pX, pY + TILE_HALF);
+}
+
+static void
 DrawBorderTile(const Tilemap *tilemap, const Tileset *tileset,
                const Rectangle src, const Vector2 pos,
                const int x, const int y)
@@ -312,6 +357,10 @@ void DrawTilemap(const Tilemap *tilemap)
                 {
                     case TILE_WALL: DrawWallTile(tilemap, ts, src, pos, x, y); break;
                     case TILE_BORDER: DrawBorderTile(tilemap, ts, src, pos, x, y); break;
+
+                    case TILE_CARPET:
+                    case TILE_TABLE: DrawDecorationTile(tilemap, ts, src, pos, x, y); break;
+
                     default: DrawTextureRec(ts->texture, src, pos, WHITE); break;
                 }
             }

@@ -13,7 +13,7 @@ IsSolidTile(const Tilemap *tilemap, const int layerIndex, const int x, const int
     if (layer->data[y * layer->width + x] <= 0) return false;
 
     const TileType type = GetTileType(tilemap, layerIndex, x, y);
-    return type == TILE_BORDER || type == TILE_WALL || type == TILE_COLLUSION;
+    return type == TILE_BORDER || type == TILE_WALL || type == TILE_COLLUSION || type == TILE_TABLE;
 }
 
 Collusion CreateCollusion(const Tilemap *tilemap, const int layerIndex)
